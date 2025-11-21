@@ -124,7 +124,130 @@ tableGroup.add(pot);
 
 const plantGeo = new THREE.DodecahedronGeometry(0.15);
 const plantMat = new THREE.MeshStandardMaterial({ color: 0x44aa44 });
-camera.aspect = window.innerWidth / window.innerHeight;
-camera.updateProjectionMatrix();
-renderer.setSize(window.innerWidth, window.innerHeight);
+const plant = new THREE.Mesh(plantGeo, plantMat);
+plant.position.set(0, 0.95, 0);
+tableGroup.add(plant);
+
+// --- Ready Player Me Avatar ---
+const loader = new GLTFLoader();
+// User's custom avatar
+const avatarUrl = 'https://models.readyplayer.me/691fe9737b7a88e1f661871f.glb';
+
+let avatar = null;
+const avatarSpeed = 2.0;
+const avatarTurnSpeed = 2.0;
+
+loader.load(
+    avatarUrl,
+    function (gltf) {
+        avatar = gltf.scene;
+        avatar.scale.set(1, 1, 1);
+        avatar.position.set(-1, 0, -0.5);
+        avatar.rotation.y = Math.PI / 4;
+        roomGroup.add(avatar);
+        console.log('Avatar loaded!');
+    },
+    undefined,
+    function (error) {
+        console.error('An error occurred loading the avatar:', error);
+    }
+);
+
+// --- Input Handling ---
+const keyState = {};
+
+window.addEventListener('keydown', (e) => {
+    keyState[e.key.toLowerCase()] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    keyState[e.key.toLowerCase()] = false;
+});
+
+function getForwardVector(object) {
+    const direction = new THREE.Vector3(0, 0, 1);
+    direction.applyQuaternion(object.quaternion);
+    return direction;
+}
+
+function updateAvatar(dt) {
+    if (!avatar) return;
+
+    let moveForward = 0;
+    let turn = 0;
+
+    // 1. Keyboard Input (Desktop)
+    if (keyState['w'] || keyState['arrowup']) moveForward += 1;
+    if (keyState['s'] || keyState['arrowdown']) moveForward -= 1;
+    if (keyState['a'] || keyState['arrowleft']) turn += 1;
+    if (keyState['d'] || keyState['arrowright']) turn -= 1;
+
+    // 2. WebXR Controller Input (VR)
+    const session = renderer.xr.getSession();
+    if (session) {
+        for (const source of session.inputSources) {
+            if (source.gamepad) {
+                // Left Controller (usually used for movement)
+                if (source.handedness === 'left') {
+                    // Up/Down on stick
+                    if (Math.abs(source.gamepad.axes[3]) > 0.1) {
+                        moveForward -= source.gamepad.axes[3]; // Negative is usually forward
+                    }
+                }
+
+                // Right Controller (usually used for turning)
+                if (source.handedness === 'right') {
+                    // Left/Right on stick
+                    if (Math.abs(source.gamepad.axes[2]) > 0.1) {
+                        turn -= source.gamepad.axes[2];
+                    }
+                }
+            }
+        }
+    }
+
+    // Apply Movement
+    if (moveForward !== 0) {
+        const forward = getForwardVector(avatar);
+        avatar.position.add(forward.multiplyScalar(moveForward * avatarSpeed * dt));
+    }
+
+    // Apply Turning
+    if (turn !== 0) {
+        avatar.rotation.y += turn * avatarTurnSpeed * dt;
+    }
+
+    // Camera Follow (Only on Desktop / Non-XR)
+    if (!renderer.xr.isPresenting) {
+        // Simple follow cam: Position camera behind and above avatar
+        // We need to calculate the offset relative to the avatar's rotation
+        const relativeOffset = new THREE.Vector3(0, 1.6, -2.5); // Behind by 2.5m, Up by 1.6m
+        const cameraOffset = relativeOffset.applyMatrix4(avatar.matrixWorld);
+
+        // Smoothly interpolate camera position
+        camera.position.lerp(cameraOffset, 0.1);
+
+        // Look at avatar (slightly above feet)
+        const lookTarget = avatar.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+        controls.target.lerp(lookTarget, 0.1);
+        controls.update();
+    }
+}
+
+const clock = new THREE.Clock();
+
+// --- Animation Loop ---
+renderer.setAnimationLoop(function () {
+    const dt = clock.getDelta();
+    updateAvatar(dt);
+    renderer.render(scene, camera);
+});
+
+// --- Resize Handler ---
+window.addEventListener('resize', onWindowResize, false);
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
