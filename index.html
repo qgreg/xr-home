@@ -1,43 +1,76 @@
-<!-- Virtual Joystick -->
-<div id="joystick-zone">
-    <div id="joystick-knob"></div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
 
-<!-- Debug Console -->
-<div id="debug-console"
-    style="position: absolute; top: 50px; left: 10px; color: yellow; font-family: monospace; pointer-events: none; z-index: 300; max-width: 90%;">
-</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WebXR Cozy Room</title>
+    <link rel="stylesheet" href="style.css">
 
-<script>
-    // Redirect console.log/error to screen for mobile debugging
-    const debugConsole = document.getElementById('debug-console');
-    const originalLog = console.log;
-    const originalError = console.error;
+    <!-- ES Module Shims: specific version for wider browser support -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
 
-    function logToScreen(msg, color = 'yellow') {
-        const line = document.createElement('div');
-        line.textContent = msg;
-        line.style.color = color;
-        debugConsole.appendChild(line);
-        // Keep only last 5 lines
-        while (debugConsole.children.length > 5) {
-            debugConsole.removeChild(debugConsole.firstChild);
+    <!-- Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
         }
-    }
+    </script>
+</head>
 
-    console.log = function (...args) {
-        originalLog.apply(console, args);
-        logToScreen(args.join(' '));
-    };
+<body>
+    <div id="info">
+        <p>Cozy Minimalist Room</p>
+        <p>Drag to rotate • Enter VR for immersive view</p>
+    </div>
 
-    console.error = function (...args) {
-        originalError.apply(console, args);
-        logToScreen(args.join(' '), 'red');
-    };
+    <!-- Virtual Joystick -->
+    <div id="joystick-zone">
+        <div id="joystick-knob"></div>
+    </div>
 
-    window.onerror = function (msg, source, lineno, colno, error) {
-        logToScreen(`Error: ${msg}`, 'red');
-    };
-</script>
+    <!-- Debug Console -->
+    <div id="debug-console"
+        style="position: absolute; top: 50px; left: 10px; color: yellow; font-family: monospace; pointer-events: none; z-index: 300; max-width: 90%;">
+    </div>
 
-<script type="module" src="main.js"></script>
+    <script>
+        // Redirect console.log/error to screen for mobile debugging
+        const debugConsole = document.getElementById('debug-console');
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        function logToScreen(msg, color = 'yellow') {
+            if (!debugConsole) return;
+            const line = document.createElement('div');
+            line.textContent = msg;
+            line.style.color = color;
+            debugConsole.appendChild(line);
+            // Keep only last 5 lines
+            while (debugConsole.children.length > 5) {
+                debugConsole.removeChild(debugConsole.firstChild);
+            }
+        }
+
+        console.log = function (...args) {
+            originalLog.apply(console, args);
+            logToScreen(args.join(' '), 'yellow');
+        };
+
+        console.error = function (...args) {
+            originalError.apply(console, args);
+            logToScreen(args.join(' '), 'red');
+        };
+
+        window.onerror = function (msg, source, lineno, colno, error) {
+            logToScreen(`Error: ${msg}`, 'red');
+        };
+    </script>
+
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
