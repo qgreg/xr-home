@@ -124,45 +124,7 @@ tableGroup.add(pot);
 
 const plantGeo = new THREE.DodecahedronGeometry(0.15);
 const plantMat = new THREE.MeshStandardMaterial({ color: 0x44aa44 });
-const plant = new THREE.Mesh(plantGeo, plantMat);
-plant.position.set(0, 0.95, 0);
-tableGroup.add(plant);
-
-// --- Ready Player Me Avatar ---
-const loader = new GLTFLoader();
-// Using a standard RPM avatar URL
-const avatarUrl = 'https://models.readyplayer.me/642159c42e72f3626a7f2424.glb';
-
-loader.load(
-    avatarUrl,
-    function (gltf) {
-        const avatar = gltf.scene;
-        avatar.scale.set(1, 1, 1); // RPM models are usually real-world scale
-        avatar.position.set(-1, 0, -0.5); // Standing to the left of the chair
-        avatar.rotation.y = Math.PI / 4; // Facing slightly towards the center
-
-        // Enable shadows if we had them, but for now just add to scene
-        roomGroup.add(avatar);
-        console.log('Avatar loaded!');
-    },
-    undefined,
-    function (error) {
-        console.error('An error occurred loading the avatar:', error);
-    }
-);
-
-// --- Animation Loop ---
-renderer.setAnimationLoop(function () {
-    // Optional: subtle floating animation for the "window" or decor if we added any floating elements
-    // For now, just render
-    renderer.render(scene, camera);
-});
-
-// --- Resize Handler ---
-window.addEventListener('resize', onWindowResize, false);
-
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
 }
