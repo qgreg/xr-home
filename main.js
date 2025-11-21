@@ -220,6 +220,73 @@ window.addEventListener('keyup', (e) => {
     keyState[e.key.toLowerCase()] = false;
 });
 
+// --- Virtual Joystick Logic ---
+const joystickZone = document.getElementById('joystick-zone');
+const joystickKnob = document.getElementById('joystick-knob');
+const joystickVector = { x: 0, y: 0 };
+let joystickTouchId = null;
+
+if (joystickZone) {
+    const maxRadius = 35; // Max distance knob can move from center
+
+    joystickZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        joystickTouchId = touch.identifier;
+        updateJoystick(touch);
+    }, { passive: false });
+
+    joystickZone.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joystickTouchId) {
+                updateJoystick(e.changedTouches[i]);
+                break;
+            }
+        }
+    }, { passive: false });
+
+    const endJoystick = (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joystickTouchId) {
+                joystickTouchId = null;
+                joystickVector.x = 0;
+                joystickVector.y = 0;
+                joystickKnob.style.transform = `translate(-50%, -50%)`;
+                break;
+            }
+        }
+    };
+
+    joystickZone.addEventListener('touchend', endJoystick);
+    joystickZone.addEventListener('touchcancel', endJoystick);
+
+    function updateJoystick(touch) {
+        const rect = joystickZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        let dx = touch.clientX - centerX;
+        let dy = touch.clientY - centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Clamp to max radius
+        if (distance > maxRadius) {
+            const ratio = maxRadius / distance;
+            dx *= ratio;
+            dy *= ratio;
+        }
+
+        // Move knob
+        joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+        // Normalize vector (-1 to 1)
+        joystickVector.x = dx / maxRadius;
+        joystickVector.y = dy / maxRadius;
+    }
+}
+
 function getForwardVector(object) {
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(object.quaternion);
@@ -238,7 +305,12 @@ function updateAvatar(dt) {
     if (keyState['a'] || keyState['arrowleft']) turn += 1;
     if (keyState['d'] || keyState['arrowright']) turn -= 1;
 
-    // 2. WebXR Controller Input (VR)
+    // 2. Virtual Joystick Input (Mobile)
+    // Y is inverted on screen (up is negative), so we flip it for forward movement
+    if (Math.abs(joystickVector.y) > 0.1) moveForward -= joystickVector.y;
+    if (Math.abs(joystickVector.x) > 0.1) turn -= joystickVector.x;
+
+    // 3. WebXR Controller Input (VR)
     const session = renderer.xr.getSession();
     if (session) {
         for (const source of session.inputSources) {
@@ -268,7 +340,36 @@ function updateAvatar(dt) {
         avatar.position.add(forward.multiplyScalar(moveForward * avatarSpeed * dt));
     }
 
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Apply Turning
+    if (turn !== 0) {
+        avatar.rotation.y += turn * avatarTurnSpeed * dt;
+    }
+
+    // Animation Blending
+    if (mixer) {
+        // If moving, increase walk weight, decrease idle
+        const targetWeight = Math.abs(moveForward) > 0.1 ? 1 : 0;
+        const lerpSpeed = 5 * dt;
+
+        if (walkAction) walkAction.weight = THREE.MathUtils.lerp(walkAction.weight, targetWeight, lerpSpeed);
+        if (idleAction) idleAction.weight = THREE.MathUtils.lerp(idleAction.weight, 1 - targetWeight, lerpSpeed);
+
+        mixer.update(dt);
+    }
+
+    // Camera Follow (Only on Desktop / Non-XR)
+    if (!renderer.xr.isPresenting) {
+        // Simple follow cam: Position camera behind and above avatar
+        // We need to calculate the offset relative to the avatar's rotation
+        const relativeOffset = new THREE.Vector3(0, 1.6, -2.5); // Behind by 2.5m, Up by 1.6m
+        const cameraOffset = relativeOffset.applyMatrix4(avatar.matrixWorld);
+
+        // Smoothly interpolate camera position
+        camera.position.lerp(cameraOffset, 0.1);
+
+        // Look at avatar (slightly above feet)
+        const lookTarget = avatar.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+        controls.target.lerp(lookTarget, 0.1);
+        controls.update();
+    }
 }
