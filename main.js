@@ -378,3 +378,21 @@ function updateAvatar(dt) {
         controls.update();
     }
 }
+
+const clock = new THREE.Clock();
+
+// --- Animation Loop ---
+renderer.setAnimationLoop(function () {
+    const dt = clock.getDelta();
+    updateAvatar(dt);
+    renderer.render(scene, camera);
+});
+
+// --- Resize Handler ---
+window.addEventListener('resize', onWindowResize, false);
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
