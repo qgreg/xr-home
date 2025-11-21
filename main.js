@@ -20,11 +20,16 @@ document.body.appendChild(VRButton.createButton(renderer));
 
 // --- Controls ---
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1, 0);
+controls.target.set(0, 0.5, 0); // Look slightly up from floor
 controls.update();
 
+// Add a simple box to ensure SOMETHING renders immediately
+const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+box.position.set(0, 0.25, 0);
+scene.add(box);
+
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft general light
+const ambientLight = new THREE.AmbientLight(0x404040, 4); // Brighter ambient light
 scene.add(ambientLight);
 
 // Warm lamp light

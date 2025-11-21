@@ -1,34 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
+<!-- Virtual Joystick -->
+<div id="joystick-zone">
+    <div id="joystick-knob"></div>
+</div>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cozy WebXR Room</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Import Map for Three.js -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
+<!-- Debug Console -->
+<div id="debug-console"
+    style="position: absolute; top: 50px; left: 10px; color: yellow; font-family: monospace; pointer-events: none; z-index: 300; max-width: 90%;">
+</div>
+
+<script>
+    // Redirect console.log/error to screen for mobile debugging
+    const debugConsole = document.getElementById('debug-console');
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    function logToScreen(msg, color = 'yellow') {
+        const line = document.createElement('div');
+        line.textContent = msg;
+        line.style.color = color;
+        debugConsole.appendChild(line);
+        // Keep only last 5 lines
+        while (debugConsole.children.length > 5) {
+            debugConsole.removeChild(debugConsole.firstChild);
         }
-    </script>
-</head>
+    }
 
-<body>
-    <div id="info">
-        <p>Cozy Minimalist Room</p>
-        <p>Drag to rotate • Enter VR for immersive view</p>
-    </div>
+    console.log = function (...args) {
+        originalLog.apply(console, args);
+        logToScreen(args.join(' '));
+    };
 
-    <!-- Virtual Joystick -->
-    <div id="joystick-zone">
-        <div id="joystick-knob"></div>
-    </div>
+    console.error = function (...args) {
+        originalError.apply(console, args);
+        logToScreen(args.join(' '), 'red');
+    };
 
-    <script type="module" src="main.js"></script>
-</body>
+    window.onerror = function (msg, source, lineno, colno, error) {
+        logToScreen(`Error: ${msg}`, 'red');
+    };
+</script>
 
-</html>
+<script type="module" src="main.js"></script>
