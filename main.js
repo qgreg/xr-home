@@ -129,29 +129,85 @@ plant.position.set(0, 0.95, 0);
 tableGroup.add(plant);
 
 // --- Ready Player Me Avatar ---
+// --- Ready Player Me Avatar ---
 const loader = new GLTFLoader();
 // User's custom avatar
 const avatarUrl = 'https://models.readyplayer.me/691fe9737b7a88e1f661871f.glb';
+// Animation source (Xbot from Three.js examples)
+const animUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Xbot.glb';
 
 let avatar = null;
+let mixer = null;
+let idleAction, walkAction;
 const avatarSpeed = 2.0;
 const avatarTurnSpeed = 2.0;
 
-loader.load(
-    avatarUrl,
-    function (gltf) {
-        avatar = gltf.scene;
-        avatar.scale.set(1, 1, 1);
-        avatar.position.set(-1, 0, -0.5);
-        avatar.rotation.y = Math.PI / 4;
-        roomGroup.add(avatar);
-        console.log('Avatar loaded!');
-    },
-    undefined,
-    function (error) {
-        console.error('An error occurred loading the avatar:', error);
-    }
-);
+// Helper to retarget Mixamo animations to RPM
+function retargetAnimation(clip) {
+    const tracks = [];
+    clip.tracks.forEach(track => {
+        // Remove "mixamorig:" prefix from bone names
+        const name = track.name.replace('mixamorig', '');
+        // Ensure proper path (some RPM avatars use "Armature.Hips" etc, some just "Hips")
+        // We'll try to match strict bone names first.
+        // Also, RPM hips might be named "Hips" or "ArmatureHips".
+        // Let's try simple replacement first which usually works for RPM.
+
+        // Create new track with renamed bone
+        const newTrack = track.clone();
+        newTrack.name = name;
+        tracks.push(newTrack);
+    });
+    return new THREE.AnimationClip(clip.name, clip.duration, tracks);
+}
+
+// Load Animations first, then Avatar
+loader.load(animUrl, (animGltf) => {
+    const clips = animGltf.animations;
+    // Xbot usually has: 0: Idle, 1: Run, 2: Walk (indices vary, let's find by name if possible or guess)
+    // In Xbot.glb: usually 'agree', 'headShake', 'idle', 'run', 'sad_pose', 'sneak_pose', 'walk'
+    const idleClipRaw = clips.find(c => c.name.toLowerCase().includes('idle')) || clips[0];
+    const walkClipRaw = clips.find(c => c.name.toLowerCase().includes('walk')) || clips[1];
+
+    const idleClip = retargetAnimation(idleClipRaw);
+    const walkClip = retargetAnimation(walkClipRaw);
+
+    // Now load Avatar
+    loader.load(
+        avatarUrl,
+        function (gltf) {
+            avatar = gltf.scene;
+            avatar.scale.set(1, 1, 1);
+            avatar.position.set(-1, 0, -0.5);
+            avatar.rotation.y = Math.PI / 4;
+
+            // Enable shadows
+            avatar.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            roomGroup.add(avatar);
+
+            // Setup Mixer
+            mixer = new THREE.AnimationMixer(avatar);
+            idleAction = mixer.clipAction(idleClip);
+            walkAction = mixer.clipAction(walkClip);
+
+            idleAction.play();
+            walkAction.play();
+            walkAction.weight = 0; // Start idle
+
+            console.log('Avatar and Animations loaded!');
+        },
+        undefined,
+        function (error) {
+            console.error('An error occurred loading the avatar:', error);
+        }
+    );
+});
 
 // --- Input Handling ---
 const keyState = {};
@@ -212,41 +268,6 @@ function updateAvatar(dt) {
         avatar.position.add(forward.multiplyScalar(moveForward * avatarSpeed * dt));
     }
 
-    // Apply Turning
-    if (turn !== 0) {
-        avatar.rotation.y += turn * avatarTurnSpeed * dt;
-    }
-
-    // Camera Follow (Only on Desktop / Non-XR)
-    if (!renderer.xr.isPresenting) {
-        // Simple follow cam: Position camera behind and above avatar
-        // We need to calculate the offset relative to the avatar's rotation
-        const relativeOffset = new THREE.Vector3(0, 1.6, -2.5); // Behind by 2.5m, Up by 1.6m
-        const cameraOffset = relativeOffset.applyMatrix4(avatar.matrixWorld);
-
-        // Smoothly interpolate camera position
-        camera.position.lerp(cameraOffset, 0.1);
-
-        // Look at avatar (slightly above feet)
-        const lookTarget = avatar.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-        controls.target.lerp(lookTarget, 0.1);
-        controls.update();
-    }
-}
-
-const clock = new THREE.Clock();
-
-// --- Animation Loop ---
-renderer.setAnimationLoop(function () {
-    const dt = clock.getDelta();
-    updateAvatar(dt);
-    renderer.render(scene, camera);
-});
-
-// --- Resize Handler ---
-window.addEventListener('resize', onWindowResize, false);
-
-function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
