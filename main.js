@@ -192,31 +192,29 @@ loader.load(
 );
 
 function loadAnimations() {
-    // Use threejs.org hosted file for best reliability/CORS
+    // Use threejs.org hosted file
     const safeAnimUrl = 'https://threejs.org/examples/models/gltf/Xbot.glb';
 
     loader.load(safeAnimUrl, (animGltf) => {
         const clips = animGltf.animations;
-        const idleClipRaw = clips.find(c => c.name.toLowerCase().includes('idle')) || clips[0];
-        const walkClipRaw = clips.find(c => c.name.toLowerCase().includes('walk')) || clips[1];
+        const idleClip = clips.find(c => c.name.toLowerCase().includes('idle')) || clips[0];
+        const walkClip = clips.find(c => c.name.toLowerCase().includes('walk')) || clips[1];
 
         if (!avatar) return;
 
         try {
-            const idleClip = retargetAnimation(idleClipRaw);
-            const walkClip = retargetAnimation(walkClipRaw);
-
             mixer = new THREE.AnimationMixer(avatar);
+            // DIRECTLY use the clips without renaming bones. 
+            // RPM avatars are often compatible with Mixamo/Xbot rigs automatically.
             idleAction = mixer.clipAction(idleClip);
             walkAction = mixer.clipAction(walkClip);
 
-            // DEBUG: Don't play yet to see if it stays visible
-            // idleAction.play();
-            // walkAction.play();
+            idleAction.play();
+            walkAction.play();
             walkAction.weight = 0; // Start idle
-            console.log('Animations loaded and applied! (Paused for Debug)');
+            console.log('Animations loaded!');
         } catch (e) {
-            console.error('Error retargeting animations:', e);
+            console.error('Error applying animations:', e);
         }
     }, undefined, (error) => {
         console.error('Error loading Animations:', error);
@@ -362,22 +360,6 @@ function updateAvatar(dt) {
     // Animation Blending
     if (mixer) {
         // If moving, increase walk weight, decrease idle
-        const targetWeight = Math.abs(moveForward) > 0.1 ? 1 : 0;
-        const lerpSpeed = 5 * dt;
-
-        if (walkAction) walkAction.weight = THREE.MathUtils.lerp(walkAction.weight, targetWeight, lerpSpeed);
-        if (idleAction) idleAction.weight = THREE.MathUtils.lerp(idleAction.weight, 1 - targetWeight, lerpSpeed);
-
-        mixer.update(dt);
-    }
-
-    // Camera Follow (Only on Desktop / Non-XR)
-    if (!renderer.xr.isPresenting) {
-        // Simple follow cam: Position camera behind and above avatar
-        // We need to calculate the offset relative to the avatar's rotation
-        const relativeOffset = new THREE.Vector3(0, 1.6, -2.5); // Behind by 2.5m, Up by 1.6m
-        const cameraOffset = relativeOffset.applyMatrix4(avatar.matrixWorld);
-
         // Smoothly interpolate camera position
         camera.position.lerp(cameraOffset, 0.1);
 
