@@ -182,6 +182,13 @@ loader.load(
         roomGroup.add(avatar);
         console.log('Avatar loaded!');
 
+        // DEBUG: Add a box helper to see where the avatar actually IS
+        const boxHelper = new THREE.BoxHelper(avatar, 0xffff00);
+        scene.add(boxHelper);
+
+        // DEBUG: Force scale up in case it's tiny
+        // avatar.scale.set(2, 2, 2); 
+
         // Now load Animations (Xbot)
         loadAnimations();
     },
