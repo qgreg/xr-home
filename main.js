@@ -23,11 +23,6 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.5, 0); // Look slightly up from floor
 controls.update();
 
-// Add a simple box to ensure SOMETHING renders immediately
-const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-box.position.set(0, 0.25, 0);
-scene.add(box);
-
 // --- Lighting ---
 const ambientLight = new THREE.AmbientLight(0x404040, 4); // Brighter ambient light
 scene.add(ambientLight);
@@ -167,36 +162,50 @@ function retargetAnimation(clip) {
 }
 
 // Load Animations first, then Avatar
-loader.load(animUrl, (animGltf) => {
-    const clips = animGltf.animations;
-    // Xbot usually has: 0: Idle, 1: Run, 2: Walk (indices vary, let's find by name if possible or guess)
-    // In Xbot.glb: usually 'agree', 'headShake', 'idle', 'run', 'sad_pose', 'sneak_pose', 'walk'
-    const idleClipRaw = clips.find(c => c.name.toLowerCase().includes('idle')) || clips[0];
-    const walkClipRaw = clips.find(c => c.name.toLowerCase().includes('walk')) || clips[1];
+// Load Avatar FIRST so it appears immediately
+loader.load(
+    avatarUrl,
+    function (gltf) {
+        avatar = gltf.scene;
+        avatar.scale.set(1, 1, 1);
+        avatar.position.set(-1, 0, -0.5);
+        avatar.rotation.y = Math.PI / 4;
 
-    const idleClip = retargetAnimation(idleClipRaw);
-    const walkClip = retargetAnimation(walkClipRaw);
+        // Enable shadows
+        avatar.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
 
-    // Now load Avatar
-    loader.load(
-        avatarUrl,
-        function (gltf) {
-            avatar = gltf.scene;
-            avatar.scale.set(1, 1, 1);
-            avatar.position.set(-1, 0, -0.5);
-            avatar.rotation.y = Math.PI / 4;
+        roomGroup.add(avatar);
+        console.log('Avatar loaded!');
 
-            // Enable shadows
-            avatar.traverse(child => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
+        // Now load Animations (Xbot)
+        loadAnimations();
+    },
+    undefined,
+    function (error) {
+        console.error('Error loading Avatar:', error);
+    }
+);
 
-            roomGroup.add(avatar);
+function loadAnimations() {
+    // Use CDN for better reliability
+    const safeAnimUrl = 'https://unpkg.com/three@0.160.0/examples/models/gltf/Xbot.glb';
 
-            // Setup Mixer
+    loader.load(safeAnimUrl, (animGltf) => {
+        const clips = animGltf.animations;
+        const idleClipRaw = clips.find(c => c.name.toLowerCase().includes('idle')) || clips[0];
+        const walkClipRaw = clips.find(c => c.name.toLowerCase().includes('walk')) || clips[1];
+
+        if (!avatar) return;
+
+        try {
+            const idleClip = retargetAnimation(idleClipRaw);
+            const walkClip = retargetAnimation(walkClipRaw);
+
             mixer = new THREE.AnimationMixer(avatar);
             idleAction = mixer.clipAction(idleClip);
             walkAction = mixer.clipAction(walkClip);
@@ -204,15 +213,14 @@ loader.load(animUrl, (animGltf) => {
             idleAction.play();
             walkAction.play();
             walkAction.weight = 0; // Start idle
-
-            console.log('Avatar and Animations loaded!');
-        },
-        undefined,
-        function (error) {
-            console.error('An error occurred loading the avatar:', error);
+            console.log('Animations loaded and applied!');
+        } catch (e) {
+            console.error('Error retargeting animations:', e);
         }
-    );
-});
+    }, undefined, (error) => {
+        console.error('Error loading Animations:', error);
+    });
+}
 
 // --- Input Handling ---
 const keyState = {};
