@@ -192,8 +192,8 @@ loader.load(
 );
 
 function loadAnimations() {
-    // Use CDN for better reliability
-    const safeAnimUrl = 'https://unpkg.com/three@0.160.0/examples/models/gltf/Xbot.glb';
+    // Use threejs.org hosted file for best reliability/CORS
+    const safeAnimUrl = 'https://threejs.org/examples/models/gltf/Xbot.glb';
 
     loader.load(safeAnimUrl, (animGltf) => {
         const clips = animGltf.animations;
