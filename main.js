@@ -210,10 +210,11 @@ function loadAnimations() {
             idleAction = mixer.clipAction(idleClip);
             walkAction = mixer.clipAction(walkClip);
 
-            idleAction.play();
-            walkAction.play();
+            // DEBUG: Don't play yet to see if it stays visible
+            // idleAction.play();
+            // walkAction.play();
             walkAction.weight = 0; // Start idle
-            console.log('Animations loaded and applied!');
+            console.log('Animations loaded and applied! (Paused for Debug)');
         } catch (e) {
             console.error('Error retargeting animations:', e);
         }
