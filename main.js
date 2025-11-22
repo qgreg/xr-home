@@ -172,7 +172,7 @@ loader.load(
         avatar.rotation.y = Math.PI / 4;
 
         // Enable shadows
-        avatar.traverse(child => {
+        avatar.traverse(function (child) {
             if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
