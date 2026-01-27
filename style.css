@@ -1,0 +1,67 @@
+body {
+    margin: 0;
+    background-color: #111;
+    color: #fff;
+    font-family: sans-serif;
+    overflow: hidden;
+    /* Prevent scrollbars */
+    touch-action: none;
+    /* Prevent browser zooming/scrolling on touch */
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    text-align: center;
+    z-index: 100;
+    pointer-events: none;
+    /* Let clicks pass through to canvas */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#info p {
+    margin: 5px 0;
+}
+
+/* Virtual Joystick */
+#joystick-zone {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    z-index: 200;
+    display: none;
+    /* Hidden by default, shown on touch devices via JS or Media Query */
+    touch-action: none;
+}
+
+#joystick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    /* Let touches pass to zone */
+}
+
+/* Show joystick only on touch devices (coarse pointer) */
+@media (pointer: coarse) {
+    #joystick-zone {
+        display: block;
+    }
+}
