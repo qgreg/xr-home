@@ -10,6 +10,10 @@ scene.background = new THREE.Color(0x111111);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 3); // Average eye height
 
+const dolly = new THREE.Group();
+dolly.add(camera);
+scene.add(dolly);
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -300,6 +304,10 @@ function updateAvatar(dt) {
 
     if (renderer.xr.isPresenting) {
         // In VR, the camera follows the head, let's keep the debug console in front
+        // Sync dolly to avatar
+        dolly.position.copy(avatar.position);
+        dolly.rotation.y = avatar.rotation.y + Math.PI; // Face forward (+Z)
+
         const xrCamera = renderer.xr.getCamera(camera);
         const headPos = new THREE.Vector3();
         const headDir = new THREE.Vector3();
